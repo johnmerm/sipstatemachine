@@ -7,17 +7,21 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.PropertyPlaceholderConfigurer;
-import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.statemachine.ObjectStateMachine;
 import org.springframework.statemachine.StateMachine;
 import org.springframework.statemachine.config.EnableStateMachine;
 import org.springframework.test.context.ContextConfiguration;
@@ -26,7 +30,7 @@ import org.springframework.test.context.support.AnnotationConfigContextLoader;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(loader = AnnotationConfigContextLoader.class)
-public class SMHandlerTest {
+public class SMHandlerTest implements ApplicationContextAware{
 
 	@Configuration
 	@EnableStateMachine
@@ -63,16 +67,19 @@ public class SMHandlerTest {
 	@Autowired
 	private PromiseStateMachineListener psml;
 	
-	@Autowired
-	private ConfigurableApplicationContext ctx;
 	
+	
+	@Override
+	public void setApplicationContext(ApplicationContext ctx) throws BeansException {
+		ctx.toString();
+	}
+
 	
 	@Before
 	public void init(){
 		stateMachine.start();
 	}
 	
-
 	@Test
 	public void testRegisterFail() throws InterruptedException{
 		Semaphore rs = psml.registerForState(States.REGISTERING);
@@ -87,6 +94,7 @@ public class SMHandlerTest {
 
 	
 	@Test
+	@Ignore
 	public void testRegister() throws InterruptedException{
 		Semaphore rs = psml.registerForState(States.REGISTERING);
 		Semaphore as = psml.registerForState(States.AUTHENTICATING);

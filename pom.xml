@@ -38,6 +38,8 @@
 			<artifactId>spring-statemachine-core</artifactId>
 			<version>1.0.2.RELEASE</version>
 		</dependency>
+		
+				
 		<dependency>
 			<groupId>javax.sip</groupId>
 			<artifactId>jain-sip-ri</artifactId>

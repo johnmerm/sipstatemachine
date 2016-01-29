@@ -6,6 +6,7 @@ import java.util.Properties;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.PropertyPlaceholderConfigurer;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -19,7 +20,7 @@ import org.springframework.statemachine.config.builders.StateMachineStateConfigu
 import org.springframework.statemachine.config.builders.StateMachineTransitionConfigurer;
 
 @Configuration
-@EnableStateMachine
+@EnableStateMachine(name="sipStateMachine")
 public class SIPStateMachine extends EnumStateMachineConfigurerAdapter<States,Events> {
 	
 	@Bean
@@ -42,9 +43,11 @@ public class SIPStateMachine extends EnumStateMachineConfigurerAdapter<States,Ev
 		states.withStates().initial(States.INIT).states(EnumSet.allOf(States.class));
 	}
 	
+	
+	
 	@Override
 	public void configure(StateMachineConfigurationConfigurer<States, Events> config) throws Exception {
-		
+	
 	}
 	
 	@Override
@@ -55,35 +58,6 @@ public class SIPStateMachine extends EnumStateMachineConfigurerAdapter<States,Ev
 		.and().withExternal().source(States.AUTHENTICATING).target(States.REGISTERED).event(Events.OK)
 		.and().withExternal().source(States.REGISTERING).target(States.ERROR).event(Events.ERROR)
 		.and().withExternal().source(States.AUTHENTICATING).target(States.ERROR).event(Events.ERROR);
-		
-	}
-
-	
-	public static void main(String[] args) throws IOException, InterruptedException {
-		Properties testProperties = new Properties();
-		testProperties.load(SIPStateMachine.class.getResourceAsStream("/test.properties"));
-		
-		String userName = testProperties.getProperty("sipServer.userName");
-		String password = testProperties.getProperty("sipServer.password");
-		String domain = testProperties.getProperty("sipServer.domain");
-		
-		
-		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(SIPStateMachine.class);
-		SMHandler handler = ctx.getBean(SMHandler.class);
-		PromiseStateMachineListener psml = ctx.getBean(PromiseStateMachineListener.class);
-		Semaphore sm = psml.registerForState(States.AUTHENTICATING);
-		Semaphore rm = psml.registerForState(States.REGISTERED);
-		handler.register(userName,password, domain);
-		
-		boolean done = sm.tryAcquire(5, TimeUnit.SECONDS);
-		System.out.println(done);
-		done = rm.tryAcquire(5, TimeUnit.SECONDS);
-		
-		System.out.println(done);
-		ctx.stop();
-		ctx.destroy();
-		ctx.close();
-		
 		
 	}
 }

@@ -18,22 +18,24 @@ import org.springframework.statemachine.transition.Transition;
 
 public class SMHandler {
 	
-	@Autowired
+	
 	private StateMachine<States, Events> sipStateMachine;
+	
 	
 	@Autowired
 	private PromiseStateMachineListener psml;
 	
+	@Autowired
+	private void setStateMachine(StateMachine<States, Events> sipStateMachine){
+		sipStateMachine.addStateListener(psml);
+		this.sipStateMachine = sipStateMachine;
+	}
+	
 	@PostConstruct
 	public void init(){
 		sipStateMachine.addStateListener(psml);
-		sipStateMachine.start();
 	}
 	
-	@PreDestroy
-	public void destroy(){
-		sipStateMachine.stop();
-	}
 	
 	//First try unauthenticated register - then process 401 response
 	public void register(String user,String passwd,String destAddress){

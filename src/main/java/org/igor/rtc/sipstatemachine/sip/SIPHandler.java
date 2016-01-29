@@ -61,7 +61,7 @@ import gov.nist.javax.sip.stack.SIPTransactionStack;
  * @author grmsjac6
  *
  */
-@WithStateMachine
+@WithStateMachine(name="sipStateMachine")
 public class SIPHandler implements SipListener,AccountManager{
 	private static final Logger LOG= LoggerFactory.getLogger(SIPHandler.class); 
 	
