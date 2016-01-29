@@ -81,6 +81,7 @@ public class SMHandlerTest implements ApplicationContextAware{
 	}
 	
 	@Test
+	@Ignore
 	public void testRegisterFail() throws InterruptedException{
 		Semaphore rs = psml.registerForState(States.REGISTERING);
 		Semaphore as = psml.registerForState(States.AUTHENTICATING);
@@ -94,15 +95,13 @@ public class SMHandlerTest implements ApplicationContextAware{
 
 	
 	@Test
-	@Ignore
 	public void testRegister() throws InterruptedException{
-		Semaphore rs = psml.registerForState(States.REGISTERING);
-		Semaphore as = psml.registerForState(States.AUTHENTICATING);
 		Semaphore ds = psml.registerForState(States.REGISTERED);
 		
 		smHandler.register(userName, password, domain);
-		assertTrue(rs.tryAcquire(5, TimeUnit.SECONDS));
-		assertTrue(as.tryAcquire(5, TimeUnit.SECONDS));
-		assertTrue(ds.tryAcquire(5, TimeUnit.SECONDS));
+		
+		assertTrue(ds.tryAcquire(5, TimeUnit.MINUTES));
+		smHandler.destroy();
+		System.exit(0);
 	}
 }

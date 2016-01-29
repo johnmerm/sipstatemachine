@@ -21,6 +21,8 @@ public class SMHandler {
 	
 	private StateMachine<States, Events> sipStateMachine;
 	
+	@Autowired
+	private SIPHandler sipHandler;
 	
 	@Autowired
 	private PromiseStateMachineListener psml;
@@ -34,6 +36,14 @@ public class SMHandler {
 	@PostConstruct
 	public void init(){
 		sipStateMachine.addStateListener(psml);
+	}
+	
+	
+	@PreDestroy
+	public void destroy(){
+		sipStateMachine.stop();
+		sipHandler.destroy();
+		
 	}
 	
 	
