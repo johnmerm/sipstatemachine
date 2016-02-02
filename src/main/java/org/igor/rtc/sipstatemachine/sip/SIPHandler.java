@@ -1,15 +1,22 @@
 package org.igor.rtc.sipstatemachine.sip;
 
 import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.stream.Collectors;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
+import javax.sdp.SdpFactory;
+import javax.sdp.SdpParseException;
+import javax.sdp.SessionDescription;
 import javax.sip.ClientTransaction;
 import javax.sip.DialogTerminatedEvent;
 import javax.sip.IOExceptionEvent;
@@ -24,7 +31,9 @@ import javax.sip.SipListener;
 import javax.sip.SipProvider;
 import javax.sip.SipStack;
 import javax.sip.TimeoutEvent;
+import javax.sip.TransactionAlreadyExistsException;
 import javax.sip.TransactionTerminatedEvent;
+import javax.sip.TransactionUnavailableException;
 import javax.sip.address.Address;
 import javax.sip.address.AddressFactory;
 import javax.sip.address.SipURI;
@@ -75,7 +84,7 @@ public class SIPHandler implements SipListener,AccountManager{
 	@Autowired
     private StateMachine<States, Events> stateMachine;
 	
-	private static final String userAgent = "MyClient";
+	public static final String userAgent = "MyClient";
 	
 	
 	private int tcpListeningPort;
@@ -98,6 +107,7 @@ public class SIPHandler implements SipListener,AccountManager{
 	
     private AuthenticationHelper authHelper;
     
+    private SdpFactory sdpFactory = SdpFactory.getInstance();
     
     private Map<ClientTransaction,UserCredentials> credentials = new HashMap<>();
     
@@ -108,7 +118,11 @@ public class SIPHandler implements SipListener,AccountManager{
     
 	@PostConstruct
 	public void init() throws Exception {
-		String ip = InetAddress.getLocalHost().getHostAddress();
+		List<NetworkInterface> nifs = Collections.list(NetworkInterface.getNetworkInterfaces()).stream()
+				.filter(n -> 
+					n.getName().startsWith("eth") && n.getInterfaceAddresses().size()>0).collect(Collectors.toList());
+				
+		String ip = nifs.get(0).getInterfaceAddresses().get(0).getAddress().getHostAddress();
 		Properties properties = new Properties();
 
 		properties.setProperty("javax.sip.STACK_NAME", "IgorClient");
@@ -312,13 +326,95 @@ public class SIPHandler implements SipListener,AccountManager{
 		System.err.println(newRegReq);
 		ct.sendRequest();
 	}
+	
+	@OnTransition(source="RINGING",target="ANSWERING")
+	public void answering(@EventHeaders Map<String,Object> headers, ExtendedState exState){
+		ServerTransaction st = (ServerTransaction) headers.get("serverTransaction");
+		SessionDescription answer = (SessionDescription)headers.get("answer");
+		Request request = (Request) headers.get("request");
+		try{
+			ContentTypeHeader cth = headerFactory.createContentTypeHeader("application", "sdp");
+			Response okResponse = messageFactory.createResponse(Response.OK, request,cth,answer.toString().getBytes());
+			
+			String user = (String) headers.get("from");
+			
+			String host = tcpPoint.getIPAddress();
+			int port = tcpPoint.getPort();
+			
+			SipURI contactURI = addressFactory.createSipURI(user, host);
+			contactURI.setPort(port);
+			contactURI.setTransportParam("tcp");
+			Address contactAddress = addressFactory.createAddress(contactURI);
+			contactAddress.setDisplayName(user);
+			
+			ContactHeader contactHeader = headerFactory.createContactHeader(contactAddress);
+			okResponse.setHeader(contactHeader);
+			Map<String,Object> newHeaders = new HashMap<>(headers);
+			//As a thread?
+			try {
+				ServerTransaction st2;
+				if (st == null){
+					st2 = sipProvider.getNewServerTransaction(request);
+					newHeaders.put("serverTransaction",st2);
+				}else{
+					st2 = st;
+				}
+
+				
+				st2.sendResponse(okResponse);
+				stateMachine.sendEvent(new GenericMessage<Events>(Events.ACK, newHeaders));
+			} catch (InvalidArgumentException|SipException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			// -- As a thread?
+
+			
+		}catch(ParseException  e){
+			headers = new HashMap<>();
+			headers.put("exception", e);
+			stateMachine.sendEvent(new GenericMessage<Events>(Events.ERROR, headers));
+		}
+	}
 	/**
 	 * This method is called by the SIP stack when a new request arrives.
 	 */
 	@Override
 	public void processRequest(RequestEvent evt) {
-		LOG.info("processRequest",evt);
+		Map<String,Object> headers = new HashMap<>();
 		
+		Request request = evt.getRequest();
+		ServerTransaction st = evt.getServerTransaction();
+		headers.put("serverTransaction",st);
+		headers.put("request",request);
+		
+		
+		ContentTypeHeader cTypeHeader = (ContentTypeHeader) request.getHeader(ContentTypeHeader.NAME);
+		FromHeader fromHeader = (FromHeader)request.getHeader(FromHeader.NAME);
+		CallIdHeader callIdHeader = (CallIdHeader)request.getHeader(CallIdHeader.NAME);
+		headers.put("from", fromHeader.getName());
+		headers.put("callID", callIdHeader.getCallId());
+		
+		System.err.println(request);
+		if (request.getMethod().equals(Request.INVITE)){
+			
+			
+			if ("application".equals(cTypeHeader.getContentType()) &&"sdp".equals(cTypeHeader.getContentSubType())){
+				String sdpString = new String((byte[])request.getContent());
+				try {
+					SessionDescription sdp = sdpFactory.createSessionDescription(sdpString);
+					
+					headers.put("offer", sdp);
+					
+					stateMachine.sendEvent(new GenericMessage<Events>(Events.OFFERED,headers));
+				} catch (SdpParseException e) {
+					headers.put("exception", e);
+					stateMachine.sendEvent(new GenericMessage<Events>(Events.ERROR,headers));
+				}
+			}
+		}else if (request.getMethod().equals(Request.ACK)){
+			stateMachine.sendEvent(new GenericMessage<Events>(Events.ACK, headers));
+		}
 		/*
 		Request req = evt.getRequest();
 

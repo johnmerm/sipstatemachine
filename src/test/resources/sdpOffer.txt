@@ -1,0 +1,12 @@
+v=0
+o=- 13098441694026764 1 IN IP4 1.2.3.4
+s=MyAgent
+c=IN IP4 1.2.3.4
+t=0 0
+m=audio 56536 RTP/AVP 9 8 120 0 84 101
+a=rtpmap:120 opus/48000/2
+a=fmtp:120 useinbandfec=1; usedtx=1; maxaveragebitrate=64000
+a=rtpmap:84 speex/16000
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-15
+a=sendrecv

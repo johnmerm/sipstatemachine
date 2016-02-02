@@ -1,20 +1,16 @@
 package org.igor.rtc.sipstatemachine.sip;
 
-import java.io.IOException;
 import java.util.EnumSet;
-import java.util.Properties;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.config.PropertyPlaceholderConfigurer;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.igor.rtc.sipstatemachine.sip.media.MediaHandler;
+import org.igor.rtc.sipstatemachine.sip.media.UDPEchoMediaHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.SyncTaskExecutor;
+import org.springframework.scheduling.concurrent.DefaultManagedTaskScheduler;
 import org.springframework.statemachine.config.EnableStateMachine;
 import org.springframework.statemachine.config.EnumStateMachineConfigurerAdapter;
-import org.springframework.statemachine.config.builders.StateMachineConfigBuilder;
 import org.springframework.statemachine.config.builders.StateMachineConfigurationConfigurer;
 import org.springframework.statemachine.config.builders.StateMachineStateConfigurer;
 import org.springframework.statemachine.config.builders.StateMachineTransitionConfigurer;
@@ -38,6 +34,11 @@ public class SIPStateMachine extends EnumStateMachineConfigurerAdapter<States,Ev
 		return new PromiseStateMachineListener();
 	}
 	
+	@Bean
+	public MediaHandler mediaHandler(){
+		return new UDPEchoMediaHandler();
+	}
+	
 	@Override
 	public void configure(StateMachineStateConfigurer<States, Events> states) throws Exception {
 		states.withStates().initial(States.INIT).states(EnumSet.allOf(States.class));
@@ -47,7 +48,7 @@ public class SIPStateMachine extends EnumStateMachineConfigurerAdapter<States,Ev
 	
 	@Override
 	public void configure(StateMachineConfigurationConfigurer<States, Events> config) throws Exception {
-	
+		config.withConfiguration().taskScheduler(new DefaultManagedTaskScheduler());
 	}
 	
 	@Override
@@ -56,8 +57,21 @@ public class SIPStateMachine extends EnumStateMachineConfigurerAdapter<States,Ev
 		.and().withExternal().source(States.REGISTERING).target(States.REGISTERED).event(Events.OK)
 		.and().withExternal().source(States.REGISTERING).target(States.AUTHENTICATING).event(Events.WWW_AUTH)
 		.and().withExternal().source(States.AUTHENTICATING).target(States.REGISTERED).event(Events.OK)
-		.and().withExternal().source(States.REGISTERING).target(States.ERROR).event(Events.ERROR)
-		.and().withExternal().source(States.AUTHENTICATING).target(States.ERROR).event(Events.ERROR);
+		.and().withExternal().source(States.REGISTERING).target(States.INIT).event(Events.ERROR)
+		.and().withExternal().source(States.AUTHENTICATING).target(States.INIT).event(Events.ERROR)
+		
+		
+		.and().withExternal().source(States.REGISTERED).event(Events.CALL).target(States.CALLING)
+		.and().withInternal().source(States.CALLING).event(Events.TRYING)
+		.and().withInternal().source(States.CALLING).event(Events.RINGING)
+		.and().withExternal().source(States.CALLING).event(Events.OK).target(States.ANSWERED)
+		.and().withLocal().source(States.ANSWERED).event(Events.ACK).target(States.CONNECTED)
+		.and().withExternal().source(States.ANSWERED).event(Events.HALT).target(States.REGISTERED)
+		
+		.and().withExternal().source(States.REGISTERED).event(Events.OFFERED).target(States.RINGING)
+		.and().withExternal().source(States.RINGING).event(Events.ANSWER).target(States.ANSWERING)
+		.and().withExternal().source(States.ANSWERING).event(Events.ACK).target(States.CONNECTED)
+		;
 		
 	}
 }

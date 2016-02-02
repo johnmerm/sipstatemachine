@@ -3,8 +3,12 @@ package org.igor.rtc.sipstatemachine.sip;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+
+import javax.sdp.SdpException;
 
 import org.junit.Before;
 import org.junit.Ignore;
@@ -103,5 +107,40 @@ public class SMHandlerTest implements ApplicationContextAware{
 		assertTrue(ds.tryAcquire(5, TimeUnit.MINUTES));
 		smHandler.destroy();
 		System.exit(0);
+	}
+	
+	
+	@Test
+	public void testWaitEvents() throws IOException{
+		smHandler.register(userName, password, domain);
+		
+		System.in.read();
+	}
+	
+	@Test
+	public void testRinging() throws Exception{
+		
+		smHandler.register(new RingListener() {
+			
+			@Override
+			public void ringing(Map<String, Object> headers) {
+				try {
+					smHandler.pickup(headers);
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
+			}
+		});
+		
+		
+		
+		smHandler.register(userName, password, domain);
+		
+		
+		System.in.read();
+		
+		
 	}
 }
