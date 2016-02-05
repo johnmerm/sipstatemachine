@@ -15,7 +15,7 @@ public class UDPEchoMediaHandlerTest {
 		SessionDescription offerSdp = SdpFactory.getInstance().createSessionDescription(offerSdpString);
 		UDPEchoMediaHandler handler = new UDPEchoMediaHandler();
 		
-		SessionDescription answer = handler.answer(offerSdp);
+		SessionDescription answer = handler.answer("callID",offerSdp);
 		System.out.println(offerSdp);
 		System.out.println(answer);
 	}

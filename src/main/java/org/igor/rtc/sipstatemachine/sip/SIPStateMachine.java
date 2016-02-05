@@ -65,8 +65,9 @@ public class SIPStateMachine extends EnumStateMachineConfigurerAdapter<States,Ev
 		.and().withInternal().source(States.CALLING).event(Events.TRYING)
 		.and().withInternal().source(States.CALLING).event(Events.RINGING)
 		.and().withExternal().source(States.CALLING).event(Events.OK).target(States.ANSWERED)
-		.and().withLocal().source(States.ANSWERED).event(Events.ACK).target(States.CONNECTED)
+		.and().withExternal().source(States.ANSWERED).event(Events.ACK).target(States.CONNECTED)
 		.and().withExternal().source(States.ANSWERED).event(Events.HALT).target(States.REGISTERED)
+		.and().withExternal().source(States.CONNECTED).event(Events.HALT).target(States.REGISTERED)
 		
 		.and().withExternal().source(States.REGISTERED).event(Events.OFFERED).target(States.RINGING)
 		.and().withExternal().source(States.RINGING).event(Events.ANSWER).target(States.ANSWERING)

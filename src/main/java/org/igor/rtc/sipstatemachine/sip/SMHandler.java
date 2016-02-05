@@ -3,6 +3,7 @@ package org.igor.rtc.sipstatemachine.sip;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import javax.annotation.PreDestroy;
@@ -14,10 +15,11 @@ import org.igor.rtc.sipstatemachine.sip.media.MediaHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.GenericMessage;
-import org.springframework.statemachine.ExtendedState;
+
 import org.springframework.statemachine.StateMachine;
 import org.springframework.statemachine.annotation.EventHeaders;
-import org.springframework.statemachine.annotation.OnTransition;
+import org.springframework.statemachine.annotation.OnStateEntry;
+import org.springframework.statemachine.annotation.OnStateExit;
 import org.springframework.statemachine.annotation.WithStateMachine;
 import org.springframework.statemachine.listener.CompositeStateMachineListener;
 import org.springframework.statemachine.listener.StateMachineListenerAdapter;
@@ -60,7 +62,7 @@ public class SMHandler {
 			
 			@Override
 			public void eventNotAccepted(Message<Events> event) {
-				System.err.println("Not accepted event:"+event.getPayload());
+				System.err.println("Not accepted event:"+event.getPayload()+ "@ state:"+Optional.ofNullable(sipStateMachine.getState()).map(s->""+s.getId()).orElse("NA"));
 			}
 		});
 		sipStateMachine.addStateListener(csml);
@@ -94,8 +96,8 @@ public class SMHandler {
 	}
 	
 	
-	@OnTransition(target="RINGING")
-	public void ringing(@EventHeaders Map<String,Object> headers, ExtendedState exState) throws SdpException{
+	@OnStateEntry(target="RINGING")
+	public void ringing(@EventHeaders Map<String,Object> headers) throws SdpException{
 		//TODO: send the event that phone is ringing & call picjup if accepted
 		ringListeners.forEach(r -> {
 			r.ringing(headers);
@@ -104,24 +106,24 @@ public class SMHandler {
 	
 	//TODO: on user accepting call
 	public void pickup(Map<String,Object> headers) throws SdpException{
-		
+		String callID = (String) headers.get("callID");
 		SessionDescription offer = (SessionDescription) headers.get("offer");
-		SessionDescription answer = mediaHandler.answer(offer);
+		SessionDescription answer = mediaHandler.answer(callID,offer);
 		headers = new HashMap<>(headers);
 		headers.put("answer", answer);
 		sipStateMachine.sendEvent(new GenericMessage<Events>(Events.ANSWER, headers));
 	}
 	
-	@OnTransition(target="CONNECTED")
-	public void connect(@EventHeaders Map<String,Object> headers, ExtendedState exState){
-		SessionDescription answer = (SessionDescription)headers.get("answer");
-		try {
-			long sessionId = answer.getOrigin().getSessionId();
-			mediaHandler.start(sessionId);
-		} catch (SdpParseException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+	@OnStateEntry(target="CONNECTED")
+	public void connect(@EventHeaders Map<String,Object> headers){
+		String callID = (String) headers.get("callID");
+		mediaHandler.start(callID);
+	}
+	
+	@OnStateExit(target="CONNECTED")
+	public void disconnect(@EventHeaders Map<String,Object> headers){
+		String callID = (String) headers.get("callID");
+		mediaHandler.stop(callID);
 	}
 	
 	

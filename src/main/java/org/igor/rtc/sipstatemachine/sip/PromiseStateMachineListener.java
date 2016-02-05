@@ -1,5 +1,6 @@
 package org.igor.rtc.sipstatemachine.sip;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -18,8 +19,11 @@ public class PromiseStateMachineListener extends StateMachineListenerAdapter<Sta
 		return lock;
 	}
 	
+	private List<States> history = new ArrayList<>();
+	
 	@Override
 	public synchronized void stateEntered(State<States, Events> state) {
+		history.add(state.getId());
 		List<Semaphore> sms = semaphores.entrySet().stream().filter(e->e.getValue() == state.getId()).map(e->e.getKey()).collect(Collectors.toList());
 		sms.forEach(s->{
 			s.release();
@@ -29,5 +33,15 @@ public class PromiseStateMachineListener extends StateMachineListenerAdapter<Sta
 		
 		
 	}
+
+	public List<States> getHistory() {
+		return history;
+	}
+
+	public void clearHistory() {
+		history.clear();
+	}
+	
+	
 
 }

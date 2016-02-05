@@ -5,6 +5,9 @@
 	<artifactId>sipstatemachine</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 
+	<properties>
+		<statemachine.version>1.1.0.M1</statemachine.version>
+	</properties>
 	<build>
 		<plugins>
 			<plugin>
@@ -19,7 +22,16 @@
 		</plugins>
 
 	</build>
-
+	<repositories>
+		<repository>
+			<id>spring-milestones</id>
+			<name>Spring Milestones</name>
+			<url>http://repo.spring.io/milestone</url>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+		</repository>
+	</repositories>
 	<dependencyManagement>
 		<dependencies>
 			<dependency>
@@ -36,10 +48,10 @@
 		<dependency>
 			<groupId>org.springframework.statemachine</groupId>
 			<artifactId>spring-statemachine-core</artifactId>
-			<version>1.0.2.RELEASE</version>
+			<version>${statemachine.version}</version>
 		</dependency>
-		
-				
+
+
 		<dependency>
 			<groupId>javax.sip</groupId>
 			<artifactId>jain-sip-ri</artifactId>
@@ -64,7 +76,7 @@
 			<artifactId>spring-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>

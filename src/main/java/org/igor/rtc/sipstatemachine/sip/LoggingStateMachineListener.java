@@ -3,6 +3,7 @@ package org.igor.rtc.sipstatemachine.sip;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
+import org.springframework.statemachine.StateContext;
 import org.springframework.statemachine.StateMachine;
 import org.springframework.statemachine.listener.StateMachineListener;
 import org.springframework.statemachine.state.State;
@@ -75,6 +76,12 @@ public class LoggingStateMachineListener implements StateMachineListener<States,
 	@Override
 	public void eventNotAccepted(Message<Events> event) {
 		logger.trace("eventNotAccepted",event);
+		
+	}
+
+	@Override
+	public void stateContext(StateContext<States, Events> stateContext) {
+		logger.trace("stateContext",stateContext);
 		
 	}
 }

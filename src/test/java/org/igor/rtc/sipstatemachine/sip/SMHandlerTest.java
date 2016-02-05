@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import javax.sdp.SdpException;
 
@@ -105,16 +106,23 @@ public class SMHandlerTest implements ApplicationContextAware{
 		smHandler.register(userName, password, domain);
 		
 		assertTrue(ds.tryAcquire(5, TimeUnit.MINUTES));
+		
+		System.out.println("History:"+psml.getHistory().stream().map(States::name).collect(Collectors.joining("->")));
+		
 		smHandler.destroy();
 		System.exit(0);
 	}
 	
-	
+	/*
+	 * Registers wityh a SIP server and waits for a call to start and close (the other party)
+	 * Should go through init->registering,authenticating,registered,ringing,answering,connected,registered
+	 */
 	@Test
 	public void testWaitEvents() throws IOException{
 		smHandler.register(userName, password, domain);
-		
+		//TODO: assert
 		System.in.read();
+		System.out.println("History:"+psml.getHistory().stream().map(States::name).collect(Collectors.joining("->")));
 	}
 	
 	@Test
@@ -140,6 +148,7 @@ public class SMHandlerTest implements ApplicationContextAware{
 		
 		
 		System.in.read();
+		System.out.println("History:"+psml.getHistory().stream().map(States::name).collect(Collectors.joining("->")));
 		
 		
 	}

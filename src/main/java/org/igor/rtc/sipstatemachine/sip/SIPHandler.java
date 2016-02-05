@@ -1,6 +1,5 @@
 package org.igor.rtc.sipstatemachine.sip;
 
-import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -31,14 +30,10 @@ import javax.sip.SipListener;
 import javax.sip.SipProvider;
 import javax.sip.SipStack;
 import javax.sip.TimeoutEvent;
-import javax.sip.TransactionAlreadyExistsException;
 import javax.sip.TransactionTerminatedEvent;
-import javax.sip.TransactionUnavailableException;
 import javax.sip.address.Address;
 import javax.sip.address.AddressFactory;
 import javax.sip.address.SipURI;
-import javax.sip.header.AllowHeader;
-import javax.sip.header.AuthorizationHeader;
 import javax.sip.header.CSeqHeader;
 import javax.sip.header.CallIdHeader;
 import javax.sip.header.ContactHeader;
@@ -62,10 +57,10 @@ import org.springframework.messaging.support.GenericMessage;
 import org.springframework.statemachine.ExtendedState;
 import org.springframework.statemachine.StateMachine;
 import org.springframework.statemachine.annotation.EventHeaders;
+import org.springframework.statemachine.annotation.OnStateEntry;
 import org.springframework.statemachine.annotation.OnTransition;
 import org.springframework.statemachine.annotation.WithStateMachine;
 
-import gov.nist.javax.sip.address.GenericURI;
 import gov.nist.javax.sip.clientauthutils.AccountManager;
 import gov.nist.javax.sip.clientauthutils.AuthenticationHelper;
 import gov.nist.javax.sip.clientauthutils.AuthenticationHelperImpl;
@@ -256,7 +251,7 @@ public class SIPHandler implements SipListener,AccountManager{
 			return sipDomain;
 		}
 	}
-	@OnTransition(target="REGISTERING")
+	@OnStateEntry(target="REGISTERING")
 	public void register(@EventHeaders Map<String,Object> headers) throws Exception{
 		String user = (String) headers.get("user");
 		String passwd = (String)headers.get("passwd");
@@ -315,8 +310,8 @@ public class SIPHandler implements SipListener,AccountManager{
 	}
 	
 	
-	@OnTransition(target="AUTHENTICATING")
-	public void authenticating(@EventHeaders Map<String,Object> headers, ExtendedState exState) throws Exception{
+	@OnStateEntry(target="AUTHENTICATING")
+	public void authenticating(@EventHeaders Map<String,Object> headers) throws Exception{
 		Response challenge = (Response) headers.get("response");
 		ClientTransaction challengedTransaction = (ClientTransaction) headers.get("clientTransaction");
 		ClientTransaction ct = authHelper.handleChallenge(challenge, challengedTransaction, sipProvider, 0,true);
@@ -327,8 +322,8 @@ public class SIPHandler implements SipListener,AccountManager{
 		ct.sendRequest();
 	}
 	
-	@OnTransition(source="RINGING",target="ANSWERING")
-	public void answering(@EventHeaders Map<String,Object> headers, ExtendedState exState){
+	@OnStateEntry(source="RINGING",target="ANSWERING")
+	public void answering(@EventHeaders Map<String,Object> headers){
 		ServerTransaction st = (ServerTransaction) headers.get("serverTransaction");
 		SessionDescription answer = (SessionDescription)headers.get("answer");
 		Request request = (Request) headers.get("request");
@@ -362,7 +357,7 @@ public class SIPHandler implements SipListener,AccountManager{
 
 				
 				st2.sendResponse(okResponse);
-				stateMachine.sendEvent(new GenericMessage<Events>(Events.ACK, newHeaders));
+				//stateMachine.sendEvent(new GenericMessage<Events>(Events.ACK, newHeaders));
 			} catch (InvalidArgumentException|SipException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -396,7 +391,8 @@ public class SIPHandler implements SipListener,AccountManager{
 		headers.put("callID", callIdHeader.getCallId());
 		
 		System.err.println(request);
-		if (request.getMethod().equals(Request.INVITE)){
+		switch(request.getMethod()){
+		case Request.INVITE:
 			
 			
 			if ("application".equals(cTypeHeader.getContentType()) &&"sdp".equals(cTypeHeader.getContentSubType())){
@@ -412,8 +408,15 @@ public class SIPHandler implements SipListener,AccountManager{
 					stateMachine.sendEvent(new GenericMessage<Events>(Events.ERROR,headers));
 				}
 			}
-		}else if (request.getMethod().equals(Request.ACK)){
+			break;
+		case Request.ACK:
 			stateMachine.sendEvent(new GenericMessage<Events>(Events.ACK, headers));
+			break;
+		case Request.BYE:
+			stateMachine.sendEvent(new GenericMessage<Events>(Events.HALT, headers));
+			break;
+		default:
+			break;
 		}
 		/*
 		Request req = evt.getRequest();

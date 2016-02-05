@@ -29,19 +29,19 @@ import gov.nist.javax.sdp.fields.AttributeField;
 public class UDPEchoMediaHandler implements MediaHandler{
 	private SdpFactory sdpFactory = SdpFactory.getInstance();
 	
-	private Map<Long,EchoThread> map = new ConcurrentHashMap<>();
+	private Map<String,Vector<EchoThread>> map = new ConcurrentHashMap<>();
 	
 	@SuppressWarnings({"unchecked" })
 	@Override
-	public SessionDescription answer(SessionDescription offer) throws SdpException{
+	public SessionDescription answer(String callID,SessionDescription offer) throws SdpException{
 		SessionDescription answer = sdpFactory.createSessionDescription();
 		Vector<MediaDescription> offeredMedia = offer.getMediaDescriptions(false);
 		
 		Connection answerConnection = createConnection(offer.getConnection());
-		long sessionId = (long)(Math.random()*10000);
+		long sessionId = (long)(Math.random()*Long.MAX_VALUE);
 		Origin origin = sdpFactory.createOrigin(SIPHandler.userAgent, sessionId, 1, answerConnection.getNetworkType(), answerConnection.getAddressType(), answerConnection.getAddress());
 		answer.setOrigin(origin);
-		Vector<MediaDescription> answerMedia = handleMedia(sessionId,offer.getConnection(),offeredMedia);
+		Vector<MediaDescription> answerMedia = handleMedia(callID,offer.getConnection(),offeredMedia);
 		
 		
 		
@@ -93,7 +93,7 @@ public class UDPEchoMediaHandler implements MediaHandler{
 	}
 	
 	@SuppressWarnings("unchecked")
-	protected Vector<MediaDescription> handleMedia(long sessionId,Connection offeredConenction,Vector<MediaDescription> offeredMedia) throws SdpParseException{
+	protected Vector<MediaDescription> handleMedia(String callID,Connection offeredConenction,Vector<MediaDescription> offeredMedia) throws SdpParseException{
 		String oa = offeredConenction.getAddress();
 		Vector<MediaDescription> media = offeredMedia.stream().map(md -> {
 			try {
@@ -101,7 +101,10 @@ public class UDPEchoMediaHandler implements MediaHandler{
 				SocketAddress remoteSocketAddress = new InetSocketAddress(oa, remotePort);
 				DatagramSocket socket = new DatagramSocket();
 				EchoThread thread = new EchoThread(remoteSocketAddress,socket);
-				map.put(sessionId, thread);
+				if (!map.containsKey(callID)){
+					map.put(callID, new Vector<>());
+				}
+				map.get(callID).add(thread);
 				
 				Media om = md.getMedia();
 				
@@ -125,11 +128,17 @@ public class UDPEchoMediaHandler implements MediaHandler{
 		return media;
 	}
 	@Override
-	public void start(long sessionId){
-		EchoThread thread = map.get(sessionId);
+	public void start(String callID){
+		Vector<EchoThread> thread = map.get(callID);
 		if (thread !=null){
-			thread.start();
+			thread.forEach(t->t.start());
 		}
+	}
+	
+	@Override
+	public void stop(String callID) {
+		// TODO Auto-generated method stub
+		
 	}
 
 }
