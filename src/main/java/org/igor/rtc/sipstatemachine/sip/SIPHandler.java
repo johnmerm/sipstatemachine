@@ -68,7 +68,7 @@ import gov.nist.javax.sip.stack.SIPTransactionStack;
 public class SIPHandler implements SipListener {
 	private static final Logger LOG = LoggerFactory.getLogger(SIPHandler.class);
 
-	@Autowired @Qualifier("sipStateMachine")
+	@Autowired
 	private StateMachineFactory<States, Events> stateMachineFactory;
 	
 
@@ -99,10 +99,15 @@ public class SIPHandler implements SipListener {
 	
 	private Map<String,StateMachine<States, Events>> callIdSM = new HashMap<>();
 	
-	private StateMachine<States, Events> getStateMachine(String callID){
-		StateMachine<States, Events> sm = callIdSM.getOrDefault(callID, stateMachineFactory.getStateMachine());
-		callIdSM.putIfAbsent(callID, sm);
-		return sm;
+	StateMachine<States, Events> getStateMachine(String callID){
+		if (!callIdSM.containsKey(callID)){
+			StateMachine<States, Events> sm = stateMachineFactory.getStateMachine();
+			sm.start();
+			callIdSM.put(callID, sm);
+		}
+		
+		
+		return callIdSM.get(callID);
 	}
 	
 	@PostConstruct

@@ -109,7 +109,7 @@ public class SMHandlerTest implements ApplicationContextAware{
 		
 		System.out.println("History:"+psml.getHistory().stream().map(States::name).collect(Collectors.joining("->")));
 		
-		smHandler.destroy();
+		
 		System.exit(0);
 	}
 	

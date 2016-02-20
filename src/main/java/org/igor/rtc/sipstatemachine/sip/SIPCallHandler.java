@@ -10,6 +10,7 @@ import javax.sip.ServerTransaction;
 import javax.sip.SipException;
 import javax.sip.address.Address;
 import javax.sip.address.SipURI;
+import javax.sip.header.CallIdHeader;
 import javax.sip.header.ContactHeader;
 import javax.sip.header.ContentTypeHeader;
 import javax.sip.message.Request;
@@ -22,13 +23,12 @@ import org.springframework.statemachine.annotation.EventHeaders;
 import org.springframework.statemachine.annotation.OnStateEntry;
 import org.springframework.statemachine.annotation.WithStateMachine;
 
-@WithStateMachine(name = "sipStateMachine")
+@WithStateMachine
 public class SIPCallHandler{
 
 	private SIPHandler sipHandler;
 	
-	@Autowired
-	private StateMachine<States, Events> stateMachine;
+	
 	
 	public SIPCallHandler(SIPHandler sipHandler) {
 		super();
@@ -41,6 +41,9 @@ public class SIPCallHandler{
 		ServerTransaction st = (ServerTransaction) headers.get("serverTransaction");
 		SessionDescription answer = (SessionDescription) headers.get("answer");
 		Request request = (Request) headers.get("request");
+		CallIdHeader callIdHeader = (CallIdHeader) request.getHeader(CallIdHeader.NAME);
+		String callID = callIdHeader.getCallId();
+		StateMachine<States, Events> stateMachine = sipHandler.getStateMachine(callID);
 		try {
 			ContentTypeHeader cth = sipHandler.getHeaderFactory().createContentTypeHeader("application", "sdp");
 			Response okResponse = sipHandler.getMessageFactory().createResponse(Response.OK, request, cth,

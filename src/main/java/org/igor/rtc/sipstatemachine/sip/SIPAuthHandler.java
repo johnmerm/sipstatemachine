@@ -23,6 +23,8 @@ import javax.sip.message.Response;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.statemachine.ExtendedState;
+import org.springframework.statemachine.StateMachine;
 import org.springframework.statemachine.annotation.EventHeaders;
 import org.springframework.statemachine.annotation.OnStateEntry;
 import org.springframework.statemachine.annotation.WithStateMachine;
@@ -33,7 +35,7 @@ import gov.nist.javax.sip.clientauthutils.AuthenticationHelperImpl;
 import gov.nist.javax.sip.clientauthutils.UserCredentials;
 import gov.nist.javax.sip.stack.SIPTransactionStack;
 
-@WithStateMachine(name = "authStateMachine")
+@WithStateMachine
 public class SIPAuthHandler implements AccountManager {
 
 	private Map<ClientTransaction, UserCredentials> credentials = new HashMap<>();
@@ -88,7 +90,7 @@ public class SIPAuthHandler implements AccountManager {
 	}
 	
 	@OnStateEntry(target="REGISTERING")
-	public void register(@EventHeaders Map<String,Object> headers) throws Exception{
+	public void register(@EventHeaders Map<String,Object> headers,ExtendedState exState) throws Exception{
 		String user = (String) headers.get("user");
 		String passwd = (String)headers.get("passwd");
 		String destAddress = (String) headers.get("destAddress");
